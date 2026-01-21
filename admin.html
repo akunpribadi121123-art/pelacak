@@ -1,27 +1,17 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Live Tracking & History</title>
+    <title>Peta Pantau Live</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; }
-        #map { height: 100vh; width: 100%; }
-        .info-panel {
-            position: absolute; top: 10px; left: 50px; z-index: 1000;
-            background: white; padding: 10px; border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-family: sans-serif;
-        }
+        #map { height: 100vh; width: 100%; background: #cbd5e1; }
+        .panel { position: absolute; top: 10px; left: 50px; z-index: 1000; background: white; padding: 10px; border-radius: 8px; font-family: sans-serif; border: 2px solid #3b82f6; }
     </style>
 </head>
 <body>
-
-    <div class="info-panel">
-        <strong>Live Monitoring</strong><br>
-        <small id="status-text">Menunggu data...</small>
+    <div class="panel">
+        <b>Status:</b> <span id="msg">Menghubungkan...</span>
     </div>
-
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -33,49 +23,37 @@
             apiKey: "AIzaSyAQW4WSw-O2JYDnZfBciUPTVzm07rcsyXs",
             authDomain: "live-traker-e7ce2.firebaseapp.com",
             projectId: "live-traker-e7ce2",
-            storageBucket: "live-traker-e7ce2.firebasestorage.app",
-            messagingSenderId: "425874298746",
-            appId: "1:425874298746:web:949db14ea30a1e742068c3",
             databaseURL: "https://live-traker-e7ce2-default-rtdb.firebaseio.com"
         };
-
         firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-
-        // Inisialisasi Peta
-        const map = L.map('map').setView([0, 0], 2);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+        
+        const map = L.map('map').setView([-2.5489, 118.0149], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         let marker, circle;
-        let routePath = L.polyline([], {color: 'red', weight: 3}).addTo(map); // Inisialisasi garis merah
+        let polyline = L.polyline([], {color: 'red', weight: 4}).addTo(map);
 
-        // Ambil data live
-        database.ref('live_location/target1').on('value', (snapshot) => {
+        // MENGAMBIL DATA
+        firebase.database().ref('live_location/target1').on('value', (snapshot) => {
             const data = snapshot.val();
-            if (data) {
-                const pos = [data.lat, data.lon];
-                const accuracy = data.acc;
+            if(data && data.lat && data.lon) {
+                document.getElementById('msg').innerText = "Target Aktif 🟢";
+                const koordinat = [data.lat, data.lon];
 
-                document.getElementById('status-text').innerText = "Target bergerak...";
-
-                // Tambahkan titik koordinat ke dalam riwayat garis
-                routePath.addLatLng(pos);
+                // Tambah garis riwayat
+                polyline.addLatLng(koordinat);
 
                 if (!marker) {
-                    // Jika marker belum ada (pertama kali muncul)
-                    marker = L.marker(pos).addTo(map).bindPopup("Lokasi Target").openPopup();
-                    circle = L.circle(pos, {radius: accuracy, color: 'blue', fillOpacity: 0.1}).addTo(map);
-                    map.setView(pos, 16);
+                    marker = L.marker(koordinat).addTo(map).bindPopup("Posisi Target").openPopup();
+                    circle = L.circle(koordinat, {radius: data.acc}).addTo(map);
+                    map.setView(koordinat, 17);
                 } else {
-                    // Update posisi marker dan lingkaran akurasi
-                    marker.setLatLng(pos);
-                    circle.setLatLng(pos).setRadius(accuracy);
-                    
-                    // Kamera mengikuti target (Auto-pan)
-                    map.panTo(pos);
+                    marker.setLatLng(koordinat);
+                    circle.setLatLng(koordinat).setRadius(data.acc);
+                    map.panTo(koordinat);
                 }
+            } else {
+                document.getElementById('msg').innerText = "Menunggu data dari HP target... ⏳";
             }
         });
     </script>
